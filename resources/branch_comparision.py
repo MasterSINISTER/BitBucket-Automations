@@ -4,7 +4,7 @@ import sys
 from urllib.parse import quote
 from concurrent.futures import ThreadPoolExecutor
 
-# Bitbucket API configuration
+# Bitbucket API configura`tion
 BASE_URL = "https://api.bitbucket.org/2.0"
 USERNAME = os.environ.get("BITBUCKET_USERNAME")
 APP_PASSWORD = os.environ.get("BITBUCKET_PASSWORD")
