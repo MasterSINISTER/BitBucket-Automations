@@ -8,7 +8,7 @@ pipeline {
     
     stages {
         // stage('Setup Python Environment') {
-        //     steps {
+        //     steps {  
         //         bat 'python -m pip install requests'
         //     }
         // }
@@ -248,7 +248,7 @@ if __name__ == "__main__":
                             "DESTINATION_BRANCH=${params.DESTINATION_BRANCH}",
                             "WORKSPACE=smartscreen"
                         ]) {
-                            bat 'python branch_comparison.py'
+                            bat '"C:\\Users\\MasterSINISTER\\AppData\\Local\\Programs\\Python\\Python310\\python.exe" branch_comparison.py'
                         }
                     }
                 }
