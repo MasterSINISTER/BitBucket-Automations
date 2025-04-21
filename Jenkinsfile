@@ -6,13 +6,13 @@ pipeline {
         string(name: 'DESTINATION_BRANCH', defaultValue: 'uat', description: 'Destination branch to compare against')
     }
     
-    // stages {
-    //     // stage('Setup Python Environment') {
-    //     //     steps {
-    //     //         // Use a more generic Python path that will work in different environments
-    //     //         bat 'python -m pip install requests || python3 -m pip install requests'
-    //     //     }
-    //     }
+    stages {
+        // stage('Setup Python Environment') {
+        //     steps {
+        //         // Use a more generic Python path that will work in different environments
+        //         bat 'python -m pip install requests || python3 -m pip install requests'
+        //     }
+        // }
         
         stage('Run Branch Comparison') {
             steps {
