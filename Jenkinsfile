@@ -14,7 +14,7 @@ pipeline {
                     // No need for libraryResource
                    
                     // Run the Python script with environment variables and credentials
-                    withCredentials([usernamePassword(credentialsId: 'bitbucket-credentials',
+                    withCredentials([usernamePassword(credentialsId: 'c8fdd3a7-6739-4422-af2c-5d305f59f44d',
                                     usernameVariable: 'BITBUCKET_USERNAME',
                                     passwordVariable: 'BITBUCKET_PASSWORD')]) {
                         withEnv([
