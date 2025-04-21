@@ -29,7 +29,7 @@ pipeline {
                             "DESTINATION_BRANCH=${params.DESTINATION_BRANCH}",
                             "WORKSPACE=smartscreen"
                         ]) {
-                            bat 'python branch_comparison.py || python3 branch_comparison.py'
+                            bat 'python resources/branch_comparison.py || python3 resources/branch_comparison.py'
                         }
                     }
                 }
