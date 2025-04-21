@@ -1,10 +1,6 @@
 pipeline {
-    agent {
-            label 'DEVBOX'
-          }
-   options {
-    ansiColor('xterm')
-  }
+    agent any
+    
     parameters {
         string(name: 'SOURCE_BRANCH', defaultValue: 'staging', description: 'Source branch to compare')
         string(name: 'DESTINATION_BRANCH', defaultValue: 'uat', description: 'Destination branch to compare against')
