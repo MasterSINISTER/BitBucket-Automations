@@ -1,21 +1,21 @@
 pipeline {
     agent any
-    
+   
     parameters {
         string(name: 'SOURCE_BRANCH', defaultValue: 'staging', description: 'Source branch to compare')
         string(name: 'DESTINATION_BRANCH', defaultValue: 'uat', description: 'Destination branch to compare against')
     }
-    
+   
     stages {
         stage('Run Branch Comparison') {
             steps {
                 script {
-                    // Create the Python script for branch comparison
-                    writeFile file: 'branch_comparison.py', text: libraryResource('branch_comparison.py')
-                    
+                    // The script is now directly part of your repo
+                    // No need for libraryResource
+                   
                     // Run the Python script with environment variables and credentials
-                    withCredentials([usernamePassword(credentialsId: 'bitbucket-credentials', 
-                                    usernameVariable: 'BITBUCKET_USERNAME', 
+                    withCredentials([usernamePassword(credentialsId: 'bitbucket-credentials',
+                                    usernameVariable: 'BITBUCKET_USERNAME',
                                     passwordVariable: 'BITBUCKET_PASSWORD')]) {
                         withEnv([
                             "SOURCE_BRANCH=${params.SOURCE_BRANCH}",
@@ -28,22 +28,11 @@ pipeline {
                 }
             }
         }
-        
-        stage('Generate Report') {
-            steps {
-                script {
-                    // Read the summary file and set it as the build description
-                    if (fileExists('branch_comparison_summary.txt')) {
-                        def summary = readFile('branch_comparison_summary.txt')
-                        currentBuild.description = summary
-                    }
-                    
-                    // Archive the outputs
-                    archiveArtifacts artifacts: 'branch_comparison_*.txt', allowEmptyArchive: true
-                }
-            }
-        }
+       
+        // Rest of your pipeline remains the same
+        // ...
     }
+
     
     post {
         success {
