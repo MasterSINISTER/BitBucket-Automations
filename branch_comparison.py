@@ -19,7 +19,6 @@ print(f"Workspace: {WORKSPACE}")
 # List of repositories to exclude from checking
 EXCLUDED_REPOS = [
     "dokerautopilot"
-    # Add more as needed
 ]
 
 def get_repositories(auth, workspace):
@@ -40,10 +39,8 @@ def get_repositories(auth, workspace):
         data = response.json()
         repositories.extend(data.get('values', []))
 
-        # Get next page if it exists
         next_url = data.get('next')
 
-    # Filter out excluded repositories
     filtered_repos = [repo for repo in repositories if repo['slug'] not in EXCLUDED_REPOS]
 
     print(f"Found {len(repositories)} repositories.")
@@ -70,13 +67,10 @@ def find_default_branch(auth, workspace, repo_slug, preferred_branches=["master"
 
 def compare_branches(auth, workspace, repo_slug, source, destination):
     """Compare two branches and get the commit differences"""
-    # First check if source branch exists
     if not check_branch_exists(auth, workspace, repo_slug, source):
         return {"error": f"Source branch '{source}' does not exist"}
 
-    # Check if destination branch exists, if not try fallbacks
     if not check_branch_exists(auth, workspace, repo_slug, destination):
-        # Try to find a default branch
         default_branch = find_default_branch(auth, workspace, repo_slug)
         if default_branch:
             print(f"Note: Using '{default_branch}' instead of '{destination}' for {repo_slug}")
@@ -84,7 +78,6 @@ def compare_branches(auth, workspace, repo_slug, source, destination):
         else:
             return {"error": f"Neither '{destination}', 'master', nor 'main' branch exists"}
 
-    # URL encode branch names
     source_encoded = quote(source)
     dest_encoded = quote(destination)
 
@@ -143,7 +136,6 @@ def display_repository_results(results, source, requested_destination):
         if result["status"] == "error":
             repos_with_errors.append(result)
         else:
-            # Check if an alternative destination branch was used
             actual_dest = result.get("actual_destination", requested_destination)
             if actual_dest != requested_destination:
                 repos_with_alt_branch.append((result, actual_dest))
@@ -153,7 +145,6 @@ def display_repository_results(results, source, requested_destination):
             else:
                 repos_without_changes.append(result)
 
-    # Display repositories with changes
     if repos_with_changes:
         print("REPOSITORIES WITH CHANGES")
         for repo in repos_with_changes:
@@ -163,24 +154,21 @@ def display_repository_results(results, source, requested_destination):
                 print(f"   Using branch: {actual_dest} (fallback from {requested_destination})")
             print(f"   Found {len(repo['commits'])} commits to merge from {source} to {actual_dest}")
 
-            # Display first 3 commits for each repo with changes
             for i, commit in enumerate(repo['commits'][:3], 1):
                 print(f"   - Commit {i}: {commit['message'].strip()[:60]}")
 
             if len(repo['commits']) > 3:
                 print(f"   - ... and {len(repo['commits']) - 3} more commits")
 
-    # Display repositories with errors
     if repos_with_errors:
         print("REPOSITORIES WITH ERRORS")
         for repo in repos_with_errors:
             print(f"Error: {repo['repo_name']} ({repo['repo_slug']}): {repo['message']}")
     
-    # Summary section will be used for Jenkins build description
     print("SUMMARY")
     summary_lines = [
-    f"Total repositories checked: {len(results)}",
-    f"Repositories with changes: {len(repos_with_changes)}"
+        f"Total repositories checked: {len(results)}",
+        f"Repositories with changes: {len(repos_with_changes)}"
     ]
     if repos_with_changes:
         summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']} ({repo['repo_slug']})" for repo in repos_with_changes]))
@@ -197,16 +185,12 @@ def display_repository_results(results, source, requested_destination):
     if repos_without_changes:
         summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']} ({repo['repo_slug']})" for repo in repos_without_changes]))
 
-    summary = "\\n".join(summary_lines)
-
-
+    summary = "\n".join(summary_lines)
     print(summary)
     
-    # Write summary to a file for Jenkins to use
     with open('branch_comparison_summary.txt', 'w') as f:
         f.write(summary)
         
-        # Also write detailed results for repositories with changes
         if repos_with_changes:
             f.write("\n\nRepositories needing attention:\n")
             for repo in repos_with_changes:
