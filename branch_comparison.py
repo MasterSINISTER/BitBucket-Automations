@@ -165,28 +165,29 @@ def display_repository_results(results, source, requested_destination):
         for repo in repos_with_errors:
             print(f"Error: {repo['repo_name']} ({repo['repo_slug']}): {repo['message']}")
     
-    print("SUMMARY")
+        print("SUMMARY")
     summary_lines = [
         f"Total repositories checked: {len(results)}",
         f"Repositories with changes: {len(repos_with_changes)}"
     ]
     if repos_with_changes:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']} ({repo['repo_slug']})" for repo in repos_with_changes]))
+        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_changes]))
 
     summary_lines.append(f"Repositories with errors: {len(repos_with_errors)}")
     if repos_with_errors:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']} ({repo['repo_slug']})" for repo in repos_with_errors]))
+        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_errors]))
 
     summary_lines.append(f"Repositories with fallback branch: {len(repos_with_alt_branch)}")
     if repos_with_alt_branch:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo[0]['repo_name']} ({repo[0]['repo_slug']}) used {repo[1]}" for repo in repos_with_alt_branch]))
+        summary_lines.append("  - " + "\n  - ".join([f"{repo[0]['repo_name']} used {repo[1]}" for repo in repos_with_alt_branch]))
 
     summary_lines.append(f"Repositories without changes: {len(repos_without_changes)}")
     if repos_without_changes:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']} ({repo['repo_slug']})" for repo in repos_without_changes]))
+        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_without_changes]))
 
     summary = "\n".join(summary_lines)
     print(summary)
+
     
     with open('branch_comparison_summary.txt', 'w') as f:
         f.write(summary)
