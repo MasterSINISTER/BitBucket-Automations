@@ -30,27 +30,38 @@ pipeline {
     always {
         script {
             if (fileExists('branch_comparison_summary.txt')) {
-                def summaryContent = readFile 'branch_comparison_summary.txt'
+                def fullSummary = readFile 'branch_comparison_summary.txt'
+                def summaryLines = []
+                def foundSummary = false
+                def lineCount = 0
                 
-                // Using credentials for email if needed
-                withCredentials([usernamePassword(
-                    credentialsId: '19cd0085-82f4-4eb9-acb8-5bf84f4e2324', 
-                    usernameVariable: 'EMAIL_USERNAME', 
-                    passwordVariable: 'EMAIL_PASSWORD')]) {
-                    
-                    emailext(
-                        to: 'rishabhgupta200230@gmail.com',
-                        subject: "Bitbucket Branch Comparison: ${params.SOURCE_BRANCH} → ${params.DESTINATION_BRANCH}",
-                        body: """
-                        <h2>Branch Comparison Summary</h2>
-                        <p>Source Branch: ${params.SOURCE_BRANCH}</p>
-                        <p>Destination Branch: ${params.DESTINATION_BRANCH}</p>
-                        <pre>${summaryContent}</pre>
-                        """,
-                        mimeType: 'text/html',
-                    )
+                // Process the file line by line
+                fullSummary.split('\n').each { line ->
+                    if (line.trim() == 'SUMMARY') {
+                        foundSummary = true
+                        summaryLines.add(line)
+                    } else if (foundSummary && lineCount < 1) { // Just get the first line after SUMMARY
+                        summaryLines.add(line)
+                        lineCount++
+                    }
                 }
-                echo "Email sent with branch comparison summary."
+                
+                // Join the extracted lines
+                def extractedSummary = summaryLines.join('\n')
+                
+                // Send only the extracted summary lines
+                emailext(
+                    to: 'rishabhgupta200230@gmail.com',
+                    subject: "Bitbucket Branch Comparison: ${params.SOURCE_BRANCH} → ${params.DESTINATION_BRANCH}",
+                    body: """
+                    <h2>Branch Comparison Summary</h2>
+                    <p>Source Branch: ${params.SOURCE_BRANCH}</p>
+                    <p>Destination Branch: ${params.DESTINATION_BRANCH}</p>
+                    <pre>${extractedSummary}</pre>
+                    """,
+                    mimeType: 'text/html'
+                )
+                echo "Email sent with extracted summary information."
             } else {
                 echo "Summary file not found. Email not sent."
                 error "Summary file 'branch_comparison_summary.txt' was not generated."
