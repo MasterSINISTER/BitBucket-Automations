@@ -47,7 +47,7 @@ pipeline {
                         <p>Destination Branch: ${params.DESTINATION_BRANCH}</p>
                         <pre>${summaryContent}</pre>
                         """,
-                        mimeType: 'text/html'
+                        mimeType: 'text/html',
                     )
                 }
                 echo "Email sent with branch comparison summary."
