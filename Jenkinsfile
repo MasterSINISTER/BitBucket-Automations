@@ -46,13 +46,8 @@
 
 
 pipeline {
-    agent {
-        label 'DEVBOX'
-    }
-    options {
-        ansiColor('xterm')
-    }
-
+    agent any
+    
     parameters {
         string(name: 'SOURCE_BRANCH', defaultValue: 'staging', description: 'Source branch to compare')
         string(name: 'DESTINATION_BRANCH', defaultValue: 'uat', description: 'Destination branch to compare against')
@@ -73,7 +68,7 @@ pipeline {
                             "DESTINATION_BRANCH=${params.DESTINATION_BRANCH}",
                             "WORKSPACE=smartscreen"
                         ]) {
-                            sh 'python3 Jumpbox/branch_comparison.py'
+                             bat '"C:\\Users\\MasterSINISTER\\AppData\\Local\\Programs\\Python\\Python310\\python.exe" branch_comparison.py'
                         }
                     }
                 }
