@@ -207,23 +207,23 @@ def display_repository_results(results, source, requested_destination):
         f.write("\n")
 
     # Now write the rest of the summary
-    f.write("SUMMARY\n")
-    f.write(f"Total repositories checked: {len(results)}\n")
-    f.write(f"Repositories with changes: {len(repos_with_changes)}\n")
-    if repos_with_changes:
-        f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_changes]) + "\n")
+        f.write("SUMMARY\n")
+        f.write(f"Total repositories checked: {len(results)}\n")
+        f.write(f"Repositories with changes: {len(repos_with_changes)}\n")
+        if repos_with_changes:
+            f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_changes]) + "\n")
 
-    f.write(f"Repositories with errors: {len(repos_with_errors)}\n")
-    if repos_with_errors:
-        f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_errors]) + "\n")
+        f.write(f"Repositories with errors: {len(repos_with_errors)}\n")
+        if repos_with_errors:
+            f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_errors]) + "\n")
 
-    f.write(f"Repositories with fallback branch: {len(repos_with_alt_branch)}\n")
-    if repos_with_alt_branch:
-        f.write("  - " + "\n  - ".join([f"{repo[0]['repo_name']} used {repo[1]}" for repo in repos_with_alt_branch]) + "\n")
+        f.write(f"Repositories with fallback branch: {len(repos_with_alt_branch)}\n")
+        if repos_with_alt_branch:
+            f.write("  - " + "\n  - ".join([f"{repo[0]['repo_name']} used {repo[1]}" for repo in repos_with_alt_branch]) + "\n")
 
-    f.write(f"Repositories without changes: {len(repos_without_changes)}\n")
-    if repos_without_changes:
-        f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_without_changes]) + "\n")
+        f.write(f"Repositories without changes: {len(repos_without_changes)}\n")
+        if repos_without_changes:
+            f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_without_changes]) + "\n")
 
 
 
