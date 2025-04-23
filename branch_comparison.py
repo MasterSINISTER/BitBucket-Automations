@@ -190,14 +190,41 @@ def display_repository_results(results, source, requested_destination):
 
     
     with open('branch_comparison_summary.txt', 'w') as f:
-        f.write(summary)
-        
-        if repos_with_changes:
-            f.write("\n\nRepositories needing attention:\n")
-            for repo in repos_with_changes:
-                actual_dest = repo.get("actual_destination", requested_destination)
-                branch_info = f"{source} -> {actual_dest}"
-                f.write(f"- {repo['repo_name']} ({repo['repo_slug']}): {len(repo['commits'])} commits ({branch_info})\n")
+     if repos_with_changes:
+        f.write("REPOSITORIES WITH CHANGES\n")
+        for repo in repos_with_changes:
+            f.write(f"Repository: {repo['repo_name']} ({repo['repo_slug']})\n")
+            actual_dest = repo.get("actual_destination", requested_destination)
+            if actual_dest != requested_destination:
+                f.write(f"   Using branch: {actual_dest} (fallback from {requested_destination})\n")
+            f.write(f"   Found {len(repo['commits'])} commits to merge from {source} to {actual_dest}\n")
+
+            for i, commit in enumerate(repo['commits'][:3], 1):
+                f.write(f"   - Commit {i}: {commit['message'].strip()[:60]}\n")
+
+            if len(repo['commits']) > 3:
+                f.write(f"   - ... and {len(repo['commits']) - 3} more commits\n")
+        f.write("\n")
+
+    # Now write the rest of the summary
+    f.write("SUMMARY\n")
+    f.write(f"Total repositories checked: {len(results)}\n")
+    f.write(f"Repositories with changes: {len(repos_with_changes)}\n")
+    if repos_with_changes:
+        f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_changes]) + "\n")
+
+    f.write(f"Repositories with errors: {len(repos_with_errors)}\n")
+    if repos_with_errors:
+        f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_errors]) + "\n")
+
+    f.write(f"Repositories with fallback branch: {len(repos_with_alt_branch)}\n")
+    if repos_with_alt_branch:
+        f.write("  - " + "\n  - ".join([f"{repo[0]['repo_name']} used {repo[1]}" for repo in repos_with_alt_branch]) + "\n")
+
+    f.write(f"Repositories without changes: {len(repos_without_changes)}\n")
+    if repos_without_changes:
+        f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_without_changes]) + "\n")
+
 
 
 def main():
