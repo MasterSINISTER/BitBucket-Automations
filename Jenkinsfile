@@ -31,37 +31,36 @@ pipeline {
         script {
             if (fileExists('branch_comparison_summary.txt')) {
                 def fullSummary = readFile 'branch_comparison_summary.txt'
-                def summaryLines = []
-                def foundSummary = false
-                def lineCount = 0
-                
-                // Process the file line by line
+                def extractedLines = []
+                def capture = false
+
                 fullSummary.split('\n').each { line ->
-                    if (line.trim() == 'SUMMARY') {
-                        foundSummary = true
-                        summaryLines.add(line)
-                    } else if (foundSummary && lineCount < 1) { // Just get the first line after SUMMARY
-                        summaryLines.add(line)
-                        lineCount++
+                    if (line.startsWith("Repositories with changes:")) {
+                        capture = true
+                        extractedLines.add(line)
+                    } else if (capture) {
+                        if (line.startsWith("Repositories")) {
+                            capture = false // Stop if another section begins
+                        } else if (line.trim()) {
+                            extractedLines.add(line)
+                        }
                     }
                 }
-                
-                // Join the extracted lines
-                def extractedSummary = summaryLines.join('\n')
-                
-                // Send only the extracted summary lines
+
+                def extractedSummary = extractedLines.join('\n')
+
                 emailext(
                     to: 'rishabhgupta200230@gmail.com',
                     subject: "Bitbucket Branch Comparison: ${params.SOURCE_BRANCH} → ${params.DESTINATION_BRANCH}",
                     body: """
-                    <h2>Branch Comparison Summary</h2>
+                    <h2>Repositories with Changes</h2>
                     <p>Source Branch: ${params.SOURCE_BRANCH}</p>
                     <p>Destination Branch: ${params.DESTINATION_BRANCH}</p>
                     <pre>${extractedSummary}</pre>
                     """,
                     mimeType: 'text/html'
                 )
-                echo "Email sent with extracted summary information."
+                echo "Email sent with filtered repository change summary."
             } else {
                 echo "Summary file not found. Email not sent."
                 error "Summary file 'branch_comparison_summary.txt' was not generated."
@@ -69,4 +68,5 @@ pipeline {
         }
     }
 }
+
 }
