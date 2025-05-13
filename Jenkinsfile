@@ -14,7 +14,7 @@ pipeline {
         
         stage('SonarQube Analysis') {
             steps {
-                // Report that build is in progress
+                // Notify Bitbucket that analysis is starting
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
                     buildKey: 'sonarqube-analysis',
@@ -23,27 +23,17 @@ pipeline {
                 
                 withSonarQubeEnv('SonarQube') {
                     script {
-                        // Get branch/PR info from Bitbucket variables if available
-                        def isPR = env.BITBUCKET_PR_ID ? true : false
-                        def branchName = env.BITBUCKET_BRANCH ?: env.GIT_BRANCH
+                        // Initialize basic parameters
+                        def sonarParams = "-Dsonar.projectKey=${SONAR_PROJECT_KEY}"
                         
-                        if (isPR) {
-                            // PR analysis
-                            bat """
-                            sonar-scanner.bat \
-                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                              -Dsonar.pullrequest.key=${env.BITBUCKET_PR_ID} \
-                              -Dsonar.pullrequest.branch=${env.BITBUCKET_BRANCH} \
-                              -Dsonar.pullrequest.base=${env.BITBUCKET_TARGET_BRANCH}
-                            """
-                        } else {
-                            // Branch analysis
-                            bat """
-                            sonar-scanner.bat \
-                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                              -Dsonar.branch.name=${branchName}
-                            """
+                        // Additional parameters if we have PR info (works in Community Edition)
+                        if (env.BITBUCKET_PR_ID) {
+                            echo "Running analysis for PR ${env.BITBUCKET_PR_ID}"
+                            // Note: CE doesn't support -Dsonar.pullrequest.* but we can still analyze the code
                         }
+                        
+                        // Run the scanner with appropriate parameters
+                        bat "sonar-scanner.bat ${sonarParams}"
                     }
                 }
             }
@@ -52,11 +42,9 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
-                    // Wait for quality gate result
                     timeout(time: 5, unit: 'MINUTES') {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
-                            // Quality gate failed - fail the build
                             currentBuild.result = 'FAILURE'
                             error "Quality Gate failed: ${qg.status}"
                         }
