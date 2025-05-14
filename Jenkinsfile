@@ -2,7 +2,6 @@ pipeline {
     agent any
     environment {
         SONAR_PROJECT_KEY = "dockerautopilot"
-        SCANNER_HOME = tool 'sonar'
         SONARQUBE_ENV = "sonar-scanner"
     }
     
