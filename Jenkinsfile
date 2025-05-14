@@ -110,23 +110,23 @@ pipeline {
             }
         }
     }
-    // post {
-    //     always {
-    //         cleanWs()
-    //     }
-    //     success {
-    //         bitbucketStatusNotify(
-    //             buildState: 'SUCCESSFUL',
-    //             buildKey: 'sonarqube-analysis',
-    //             buildName: 'SonarQube Analysis'
-    //         )
-    //     }
-    //     failure {
-    //         bitbucketStatusNotify(
-    //             buildState: 'FAILED',
-    //             buildKey: 'sonarqube-analysis',
-    //             buildName: 'SonarQube Analysis'
-    //         )
-    //     }
-    // }
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            bitbucketStatusNotify(
+                buildState: 'SUCCESSFUL',
+                buildKey: 'sonarqube-analysis',
+                buildName: 'SonarQube Analysis'
+            )
+        }
+        failure {
+            bitbucketStatusNotify(
+                buildState: 'FAILED',
+                buildKey: 'sonarqube-analysis',
+                buildName: 'SonarQube Analysis'
+            )
+        }
+    }
 }
