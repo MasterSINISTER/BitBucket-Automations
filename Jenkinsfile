@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        SONAR_PROJECT_KEY = "adv-app"
+        SONAR_PROJECT_KEY = "dockerautopilot"
     }
     
     stages {
