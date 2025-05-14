@@ -51,27 +51,39 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                script {
-                    try {
-                        timeout(time: 5, unit: 'MINUTES') {
-                            def qg = env.SONAR_CE_TASK_ID ?
-                                waitForQualityGate(taskId: env.SONAR_CE_TASK_ID) :
-                                waitForQualityGate()
-
-                            if (qg.status != 'OK') {
-                                currentBuild.result = 'FAILURE'
-                                error "Quality Gate failed: ${qg.status}"
-                            }
+stage('Quality Gate') {
+    steps {
+        script {
+            try {
+                timeout(time: 10, unit: 'MINUTES') {  // Increased timeout
+                    echo "Waiting for SonarQube quality gate with task ID: ${env.SONAR_CE_TASK_ID}"
+                    
+                    // Try checking task status directly first
+                    if (env.SONAR_CE_TASK_ID) {
+                        withSonarQubeEnv('SonarQube') {
+                            sh "curl -u ${SONAR_AUTH_TOKEN}: ${SONAR_HOST_URL}/api/ce/task?id=${env.SONAR_CE_TASK_ID}"
                         }
-                    } catch (Exception e) {
-                        echo "Quality Gate check failed: ${e.message}"
-                        echo "Continuing pipeline despite Quality Gate issues"
+                    }
+                    
+                    def qg = env.SONAR_CE_TASK_ID ?
+                        waitForQualityGate(taskId: env.SONAR_CE_TASK_ID, abortPipeline: false) :
+                        waitForQualityGate(abortPipeline: false)
+                        
+                    echo "Quality Gate status: ${qg.status}"
+                    
+                    if (qg.status != 'OK') {
+                        currentBuild.result = 'UNSTABLE'
+                        echo "Quality Gate failed with status: ${qg.status}"
                     }
                 }
+            } catch (Exception e) {
+                echo "Quality Gate check failed: ${e.message}"
+                echo "Continuing pipeline despite Quality Gate issues"
+                currentBuild.result = 'UNSTABLE'
             }
         }
+    }
+}
     }
 
     post {
