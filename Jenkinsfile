@@ -31,7 +31,7 @@ pipeline {
                             echo "Running analysis for PR ${env.BITBUCKET_PR_ID}"
                         }
 
-                        sh "sonar-scanner ${sonarParams}"
+                        bat "sonar-scanner ${sonarParams}"
 
                         try {
                             def taskId = null
