@@ -94,42 +94,42 @@ pipeline {
             }
         }
     }
-    // post {
-    //     always {
-    //         echo "Running post-build cleanup actions"
-    //         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-    //             cleanWs()
-    //         }
-    //     }
-    //     success {
-    //         echo "Build succeeded, sending success notification"
-    //         catchError(buildResult: null, stageResult: null) {
-    //             bitbucketStatusNotify(
-    //                 buildState: 'SUCCESSFUL',
-    //                 buildKey: 'sonarqube-analysis',
-    //                 buildName: 'SonarQube Analysis'
-    //             )
-    //         }
-    //     }
-    //     unstable {
-    //         echo "Build is unstable, sending unstable notification"
-    //         catchError(buildResult: null, stageResult: null) {
-    //             bitbucketStatusNotify(
-    //                 buildState: 'FAILED',
-    //                 buildKey: 'sonarqube-analysis',
-    //                 buildName: 'SonarQube Analysis (Unstable)'
-    //             )
-    //         }
-    //     }
-    //     failure {
-    //         echo "Build failed, sending failure notification"
-    //         catchError(buildResult: null, stageResult: null) {
-    //             bitbucketStatusNotify(
-    //                 buildState: 'FAILED',
-    //                 buildKey: 'sonarqube-analysis',
-    //                 buildName: 'SonarQube Analysis'
-    //             )
-    //         }
-    //     }
-    // }
+    post {
+        always {
+            echo "Running post-build cleanup actions"
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                cleanWs()
+            }
+        }
+        success {
+            echo "Build succeeded, sending success notification"
+            catchError(buildResult: null, stageResult: null) {
+                bitbucketStatusNotify(
+                    buildState: 'SUCCESSFUL',
+                    buildKey: 'sonarqube-analysis',
+                    buildName: 'SonarQube Analysis'
+                )
+            }
+        }
+        unstable {
+            echo "Build is unstable, sending unstable notification"
+            catchError(buildResult: null, stageResult: null) {
+                bitbucketStatusNotify(
+                    buildState: 'FAILED',
+                    buildKey: 'sonarqube-analysis',
+                    buildName: 'SonarQube Analysis (Unstable)'
+                )
+            }
+        }
+        failure {
+            echo "Build failed, sending failure notification"
+            catchError(buildResult: null, stageResult: null) {
+                bitbucketStatusNotify(
+                    buildState: 'FAILED',
+                    buildKey: 'sonarqube-analysis',
+                    buildName: 'SonarQube Analysis'
+                )
+            }
+        }
+    }
 }
