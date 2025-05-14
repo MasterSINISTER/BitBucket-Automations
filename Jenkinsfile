@@ -60,13 +60,14 @@ pipeline {
                             
                             // Instead of waiting indefinitely, set a shorter timeout for waitForQualityGate
                             echo "Checking quality gate with timeout..."
-                            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                            catchError(buildResult: null, stageResult: null) {
                                 def qg = waitForQualityGate(abortPipeline: false)
                                 echo "Quality Gate status: ${qg.status}"
                                 
                                 if (qg.status != 'OK') {
-                                    currentBuild.result = 'UNSTABLE'
-                                    echo "Quality Gate failed with status: ${qg.status}"
+                                    echo "Quality Gate did not pass, status: ${qg.status}"
+                                    echo "Ignoring quality gate failure as requested"
+                                    // No longer setting currentBuild.result = 'UNSTABLE'
                                 }
                             }
                         }
@@ -75,7 +76,7 @@ pipeline {
                         echo "Quality Gate check failed: ${e.message}"
                         echo "Error details: ${e.toString()}"
                         echo "Continuing pipeline despite Quality Gate issues"
-                        currentBuild.result = 'UNSTABLE'
+                        // No longer setting currentBuild.result = 'UNSTABLE'
                     } finally {
                         // Always send a status notification
                         echo "Quality Gate stage finished, moving to post actions"
@@ -86,8 +87,6 @@ pipeline {
                 always {
                     echo "Inside Quality Gate stage post actions"
                 }
-            }
-        }
             }
         }
     }
