@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         SONAR_PROJECT_KEY = "dockerautopilot"
-        SCANNER_HOME = tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonar'
         SONARQUBE_ENV = "sonar-scanner"
     }
     
@@ -66,7 +66,7 @@ pipeline {
                 
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
                     bat """
-                        ${SCANNER_HOME}/bin/sonar-scanner \
+                        ${SONARQUBE_ENV}/bin/sonar-scanner \
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                         -Dsonar.sources=. \
                         -Dsonar.exclusions=**/*.html,values.yaml \
