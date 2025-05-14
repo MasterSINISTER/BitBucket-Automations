@@ -1,5 +1,6 @@
 pipeline {
     agent any
+
     environment {
         SONAR_PROJECT_KEY = "adv-app"
         BITBUCKET_CREDS = credentials('c8fdd3a7-6739-4422-af2c-5d305f59f44d')
@@ -9,16 +10,29 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                script {
+                    env.GIT_COMMIT = bat(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    env.REPO_SLUG = bat(script: 'git remote get-url origin', returnStdout: true)
+                        .trim()
+                        .replaceFirst(/^.*bitbucket\.org[/:]/, '') // extract user/repo.git
+                        .replaceFirst(/\.git$/, '') // remove .git
+                    echo "Git commit: ${env.GIT_COMMIT}"
+                    echo "Repo slug: ${env.REPO_SLUG}"
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                bitbucketStatusNotify(
-                    buildState: 'INPROGRESS',
-                    buildKey: 'sonarqube-analysis',
-                    buildName: 'SonarQube Analysis',
-                )
+                script {
+                    bitbucketStatusNotify(
+                        buildState: 'INPROGRESS',
+                        buildKey: 'sonarqube-analysis',
+                        buildName: 'SonarQube Analysis',
+                        repoSlug: env.REPO_SLUG,
+                        commitId: env.GIT_COMMIT
+                    )
+                }
 
                 withSonarQubeEnv('SonarQube') {
                     script {
@@ -26,10 +40,6 @@ pipeline {
                                           "-Dsonar.projectName=${SONAR_PROJECT_KEY} " +
                                           "-Dsonar.scm.provider=git " +
                                           "-Dsonar.sources=."
-
-                        if (env.BITBUCKET_PR_ID) {
-                            echo "Running analysis for PR ${env.BITBUCKET_PR_ID}"
-                        }
 
                         bat "sonar-scanner ${sonarParams}"
 
@@ -60,7 +70,6 @@ pipeline {
                                 (waitForQualityGate(taskId: env.SONAR_CE_TASK_ID)) :
                                  waitForQualityGate()
 
-
                             if (qg.status != 'OK') {
                                 currentBuild.result = 'FAILURE'
                                 error "Quality Gate failed: ${qg.status}"
@@ -80,18 +89,26 @@ pipeline {
             cleanWs()
         }
         success {
-            bitbucketStatusNotify(
-                buildState: 'SUCCESSFUL',
-                buildKey: 'sonarqube-analysis',
-                buildName: 'SonarQube Analysis',
-            )
+            script {
+                bitbucketStatusNotify(
+                    buildState: 'SUCCESSFUL',
+                    buildKey: 'sonarqube-analysis',
+                    buildName: 'SonarQube Analysis',
+                    repoSlug: env.REPO_SLUG,
+                    commitId: env.GIT_COMMIT
+                )
+            }
         }
         failure {
-            bitbucketStatusNotify(
-                buildState: 'FAILED',
-                buildKey: 'sonarqube-analysis',
-                buildName: 'SonarQube Analysis',
-            )
+            script {
+                bitbucketStatusNotify(
+                    buildState: 'FAILED',
+                    buildKey: 'sonarqube-analysis',
+                    buildName: 'SonarQube Analysis',
+                    repoSlug: env.REPO_SLUG,
+                    commitId: env.GIT_COMMIT
+                )
+            }
         }
     }
 }
