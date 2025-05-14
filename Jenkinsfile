@@ -33,7 +33,10 @@ pipeline {
                         try {
                             def taskId = null
                             if (fileExists('.scannerwork\\report-task.txt')) {
-                                def props = readProperties(file: '.scannerwork\\report-task.txt')
+                                def props = readFile('.scannerwork\\report-task.txt').split('\n').collectEntries {
+                                    def parts = it.split('=')
+                                    [(parts[0].trim()): parts[1].trim()]
+                                }
                                 taskId = props['ceTaskId']
                                 env.SONAR_CE_TASK_ID = taskId
                                 echo "SonarQube task ID: ${taskId}"
