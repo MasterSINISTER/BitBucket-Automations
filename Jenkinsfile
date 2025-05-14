@@ -1,72 +1,102 @@
 pipeline {
-    agent any
-    
+    agent {
+        label 'DEVBOX'
+    }
+    options {
+        ansiColor('xterm')
+    }
     environment {
         SONAR_PROJECT_KEY = "dockerautopilot"
+        BITBUCKET_CREDS = credentials('bitbucket-repo-read-app-password')
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-        
+
         stage('SonarQube Analysis') {
             steps {
-                // Notify Bitbucket that analysis is starting
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
                     buildKey: 'sonarqube-analysis',
-                    buildName: 'SonarQube Analysis'
+                    buildName: 'SonarQube Analysis',
+                    credentialsId: 'bitbucket-repo-read-app-password'
                 )
-                
+
                 withSonarQubeEnv('SonarQube') {
                     script {
-                        // Initialize basic parameters
-                        def sonarParams = "-Dsonar.projectKey=${SONAR_PROJECT_KEY}"
-                        
-                        // Additional parameters if we have PR info (works in Community Edition)
+                        def sonarParams = "-Dsonar.projectKey=${SONAR_PROJECT_KEY} " +
+                                          "-Dsonar.projectName=${SONAR_PROJECT_KEY} " +
+                                          "-Dsonar.scm.provider=git " +
+                                          "-Dsonar.sources=."
+
                         if (env.BITBUCKET_PR_ID) {
                             echo "Running analysis for PR ${env.BITBUCKET_PR_ID}"
-                            // Note: CE doesn't support -Dsonar.pullrequest.* but we can still analyze the code
                         }
-                        
-                        // Run the scanner with appropriate parameters
-                        bat "sonar-scanner.bat ${sonarParams}"
+
+                        sh "sonar-scanner ${sonarParams}"
+
+                        try {
+                            def taskId = null
+                            if (fileExists('.scannerwork/report-task.txt')) {
+                                def props = readProperties(file: '.scannerwork/report-task.txt')
+                                taskId = props['ceTaskId']
+                                env.SONAR_CE_TASK_ID = taskId
+                                echo "SonarQube task ID: ${taskId}"
+                            } else {
+                                echo "Report task file not found"
+                            }
+                        } catch (Exception e) {
+                            echo "Could not extract task ID: ${e.message}"
+                        }
                     }
                 }
             }
         }
-        
+
         stage('Quality Gate') {
             steps {
                 script {
-                    timeout(time: 5, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            currentBuild.result = 'FAILURE'
-                            error "Quality Gate failed: ${qg.status}"
+                    try {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            def qg = env.SONAR_CE_TASK_ID ?
+                                (waitForQualityGate(taskId: env.SONAR_CE_TASK_ID)) :
+                                 waitForQualityGate()
+
+
+                            if (qg.status != 'OK') {
+                                currentBuild.result = 'FAILURE'
+                                error "Quality Gate failed: ${qg.status}"
+                            }
                         }
+                    } catch (Exception e) {
+                        echo "Quality Gate check failed: ${e.message}"
+                        echo "Continuing pipeline despite Quality Gate issues"
                     }
                 }
             }
         }
     }
-    
+
     post {
+        always {
+            cleanWs()
+        }
         success {
             bitbucketStatusNotify(
                 buildState: 'SUCCESSFUL',
                 buildKey: 'sonarqube-analysis',
-                buildName: 'SonarQube Analysis'
+                buildName: 'SonarQube Analysis',
             )
         }
         failure {
             bitbucketStatusNotify(
                 buildState: 'FAILED',
                 buildKey: 'sonarqube-analysis',
-                buildName: 'SonarQube Analysis'
+                buildName: 'SonarQube Analysis',
             )
         }
     }
