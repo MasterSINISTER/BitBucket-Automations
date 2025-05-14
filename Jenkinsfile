@@ -61,7 +61,7 @@ stage('Quality Gate') {
                     // Try checking task status directly first
                     if (env.SONAR_CE_TASK_ID) {
                         withSonarQubeEnv('SonarQube') {
-                            sh "curl -u ${SONAR_AUTH_TOKEN}: ${SONAR_HOST_URL}/api/ce/task?id=${env.SONAR_CE_TASK_ID}"
+                            bat "curl -u ${SONAR_AUTH_TOKEN}: ${SONAR_HOST_URL}/api/ce/task?id=${env.SONAR_CE_TASK_ID}"
                         }
                     }
                     
