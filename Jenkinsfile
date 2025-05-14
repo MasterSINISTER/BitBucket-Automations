@@ -132,24 +132,31 @@ pipeline {
         }
     }
     
-    post {
-        success {
-            bitbucketStatusNotify(
-                buildState: 'SUCCESSFUL',
-                buildDescription: "Build completed successfully"
-            )
-        }
-        failure {
-            bitbucketStatusNotify(
-                buildState: 'FAILED',
-                buildDescription: "Build failed"
-            )
-        }
-        aborted {
-            bitbucketStatusNotify(
-                buildState: 'FAILED',
-                buildDescription: "Build was aborted"
-            )
-        }
+post {
+    success {
+        bitbucketStatusNotify(
+            buildState: 'SUCCESSFUL',
+            buildKey: 'build-complete',
+            buildName: 'Final Build Status',
+            buildDescription: 'Build completed successfully'
+        )
     }
+    failure {
+        bitbucketStatusNotify(
+            buildState: 'FAILED',
+            buildKey: 'build-complete',
+            buildName: 'Final Build Status',
+            buildDescription: 'Build failed'
+        )
+    }
+    aborted {
+        bitbucketStatusNotify(
+            buildState: 'FAILED',
+            buildKey: 'build-complete',
+            buildName: 'Final Build Status',
+            buildDescription: 'Build was aborted'
+        )
+    }
+}
+
 }
