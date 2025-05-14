@@ -49,7 +49,7 @@ pipeline {
                 // Notify Bitbucket that build is starting
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
-                    buildKey: 'sonarqube-analysis',
+                    buildKey: 'build-complete',
                     buildName: 'SonarQube Analysis'
                 )
             }
@@ -60,7 +60,7 @@ pipeline {
                 // Notify Bitbucket that SonarQube analysis is starting
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
-                    buildKey: 'sonar-scan',
+                    buildKey: 'build-complete',
                     buildName: 'Running SonarQube Scan'
                 )
                 
@@ -77,7 +77,7 @@ pipeline {
                 // Notify Bitbucket that SonarQube analysis completed
                 bitbucketStatusNotify(
                     buildState: 'SUCCESSFUL',
-                    buildKey: 'sonar-scan',
+                    buildKey: 'build-complete',
                     buildName: 'SonarQube Scan Complete'
                 )
             }
@@ -88,7 +88,7 @@ pipeline {
                 // Notify Bitbucket that quality gate check is starting
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
-                    buildKey: 'quality-gate',
+                    buildKey: 'build-complete',
                     buildName: 'SonarQube Quality Gate'
                 )
                 
@@ -101,7 +101,7 @@ pipeline {
                             // Quality gate failed - notify Bitbucket and fail the build
                             bitbucketStatusNotify(
                                 buildState: 'FAILED',
-                                buildKey: 'quality-gate',
+                                buildKey: 'build-complete',
                                 buildName: 'SonarQube Quality Gate',
                                 buildDescription: "Quality Gate status: ${qg.status}"
                             )
@@ -112,7 +112,7 @@ pipeline {
                             // Quality gate passed - notify Bitbucket
                             bitbucketStatusNotify(
                                 buildState: 'SUCCESSFUL',
-                                buildKey: 'quality-gate',
+                                buildKey: 'build-complete',
                                 buildName: 'SonarQube Quality Gate',
                                 buildDescription: "Quality Gate status: ${qg.status}"
                             )
@@ -121,7 +121,7 @@ pipeline {
                         // In case of any other errors
                         bitbucketStatusNotify(
                             buildState: 'FAILED',
-                            buildKey: 'quality-gate',
+                            buildKey: 'build-complete',
                             buildName: 'SonarQube Quality Gate',
                             buildDescription: "Error: ${e.message}"
                         )
