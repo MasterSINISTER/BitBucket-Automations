@@ -42,11 +42,17 @@ pipeline {
     }
 
     post {
-        success {
-            stashNotifier()
+        always {
+            script {
+                currentBuild.result = currentBuild.result ?: 'SUCCESS'
+                notifyBitbucket()
+            }
         }
+
         failure {
-            stashNotifier()
+            script {
+                notifyBitbucket()
+            }
         }
     }
 }
