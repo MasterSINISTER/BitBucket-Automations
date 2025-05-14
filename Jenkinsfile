@@ -11,14 +11,14 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.GIT_COMMIT = bat(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    env.REPO_SLUG = bat(script: 'git remote get-url origin', returnStdout: true)
-                        .trim()
-                        .replaceFirst(/^.*bitbucket\.org[/:]/, '') // extract user/repo.git
-                        .replaceFirst(/\.git$/, '') // remove .git
-                    echo "Git commit: ${env.GIT_COMMIT}"
+                    def originUrl = bat(script: 'git remote get-url origin', returnStdout: true).trim()
+                    def slug = originUrl
+                        .replaceFirst(/.*bitbucket\.org[:\/]/, '') // works for both ssh and https
+                        .replaceFirst(/\.git$/, '')
+                    env.REPO_SLUG = slug
                     echo "Repo slug: ${env.REPO_SLUG}"
                 }
+
             }
         }
 
