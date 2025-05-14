@@ -65,7 +65,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        timeout(time: 10, unit: 'MINUTES') {
+                        timeout(time: 1, unit: 'MINUTES') {
                             def qg = env.SONAR_CE_TASK_ID ?
                                 (waitForQualityGate(taskId: env.SONAR_CE_TASK_ID)) :
                                  waitForQualityGate()
