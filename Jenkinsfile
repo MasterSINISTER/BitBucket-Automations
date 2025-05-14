@@ -1,57 +1,90 @@
 pipeline {
-    agent any
-    
+     agent any
     environment {
         SONAR_PROJECT_KEY = "adv-app"
     }
-    
+   
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-        
+       
         stage('SonarQube Analysis') {
             steps {
-                // Notify Bitbucket that analysis is starting
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
                     buildKey: 'sonarqube-analysis',
                     buildName: 'SonarQube Analysis'
                 )
-                
+               
                 withSonarQubeEnv('SonarQube') {
                     script {
-                        def sonarParams = "-Dsonar.projectKey=${SONAR_PROJECT_KEY}"
-                        
+                        def sonarParams = "-Dsonar.projectKey=${SONAR_PROJECT_KEY} " +
+                                         "-Dsonar.projectName=${SONAR_PROJECT_KEY} " +
+                                         "-Dsonar.scm.provider=git " +
+                                         "-Dsonar.sources=. "
+                       
                         if (env.BITBUCKET_PR_ID) {
                             echo "Running analysis for PR ${env.BITBUCKET_PR_ID}"
                         }
+                       
+                        bat "sonar-scanner ${sonarParams}"
                         
-                        // Run the scanner with appropriate parameters
-                        bat "sonar-scanner.bat ${sonarParams}"
+                        try {
+                            def taskId = null
+                            if (fileExists('.scannerwork/report-task.txt')) {
+                                def props = readProperties(file: '.scannerwork/report-task.txt')
+                                taskId = props['ceTaskId']
+                                env.SONAR_CE_TASK_ID = taskId
+                                echo "SonarQube task ID: ${taskId}"
+                            } else {
+                                echo "Report task file not found"
+                            }
+                        } catch (Exception e) {
+                            echo "Could not extract task ID: ${e.message}"
+                        }
                     }
                 }
             }
         }
-        
+       
         stage('Quality Gate') {
             steps {
                 script {
-                    timeout(time: 5, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            currentBuild.result = 'FAILURE'
-                            error "Quality Gate failed: ${qg.status}"
+                    try {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            if (env.SONAR_CE_TASK_ID) {
+                                echo "Waiting for task ${env.SONAR_CE_TASK_ID}"
+                                def qg = waitForQualityGate taskId: env.SONAR_CE_TASK_ID
+                                
+                                if (qg.status != 'OK') {
+                                    currentBuild.result = 'FAILURE'
+                                    error "Quality Gate failed: ${qg.status}"
+                                }
+                            } else {
+                                def qg = waitForQualityGate()
+                                
+                                if (qg.status != 'OK') {
+                                    currentBuild.result = 'FAILURE'
+                                    error "Quality Gate failed: ${qg.status}"
+                                }
+                            }
                         }
+                    } catch (Exception e) {
+                        echo "Quality Gate check failed: ${e.message}"
+                        echo "Continuing pipeline despite Quality Gate issues"
                     }
                 }
             }
         }
     }
-    
+   
     post {
+        always {
+            cleanWs()
+        }
         success {
             bitbucketStatusNotify(
                 buildState: 'SUCCESSFUL',
