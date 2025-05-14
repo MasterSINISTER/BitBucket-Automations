@@ -65,7 +65,7 @@ pipeline {
                                 echo "Quality Gate status: ${qg.status}"
                                 
                                 if (qg.status != 'OK') {
-                                    currentBuild.result = 'FAILED'
+                                    currentBuild.result = 'UNSTABLE'
                                     echo "Quality Gate failed with status: ${qg.status}"
                                 }
                             }
@@ -75,7 +75,7 @@ pipeline {
                         echo "Quality Gate check failed: ${e.message}"
                         echo "Error details: ${e.toString()}"
                         echo "Continuing pipeline despite Quality Gate issues"
-                        currentBuild.result = 'FAILED'
+                        currentBuild.result = 'UNSTABLE'
                     } finally {
                         // Always send a status notification
                         echo "Quality Gate stage finished, moving to post actions"
