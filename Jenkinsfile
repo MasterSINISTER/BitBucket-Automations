@@ -50,8 +50,7 @@ pipeline {
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
                     buildKey: 'sonarqube-analysis',
-                    buildName: 'SonarQube Analysis',
-                    basicAuth: true
+                    buildName: 'SonarQube Analysis'
                 )
             }
         }
@@ -62,8 +61,7 @@ pipeline {
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
                     buildKey: 'sonar-scan',
-                    buildName: 'Running SonarQube Scan',
-                    basicAuth: true
+                    buildName: 'Running SonarQube Scan'
                 )
                 
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
@@ -80,8 +78,7 @@ pipeline {
                 bitbucketStatusNotify(
                     buildState: 'SUCCESSFUL',
                     buildKey: 'sonar-scan',
-                    buildName: 'SonarQube Scan Complete',
-                    basicAuth: true
+                    buildName: 'SonarQube Scan Complete'
                 )
             }
         }
@@ -92,8 +89,7 @@ pipeline {
                 bitbucketStatusNotify(
                     buildState: 'INPROGRESS',
                     buildKey: 'quality-gate',
-                    buildName: 'SonarQube Quality Gate',
-                    basicAuth: true
+                    buildName: 'SonarQube Quality Gate'
                 )
                 
                 script {
@@ -107,8 +103,7 @@ pipeline {
                                 buildState: 'FAILED',
                                 buildKey: 'quality-gate',
                                 buildName: 'SonarQube Quality Gate',
-                                buildDescription: "Quality Gate status: ${qg.status}",
-                                basicAuth: true
+                                buildDescription: "Quality Gate status: ${qg.status}"
                             )
                             
                             currentBuild.result = 'FAILURE'
@@ -119,8 +114,7 @@ pipeline {
                                 buildState: 'SUCCESSFUL',
                                 buildKey: 'quality-gate',
                                 buildName: 'SonarQube Quality Gate',
-                                buildDescription: "Quality Gate status: ${qg.status}",
-                                basicAuth: true
+                                buildDescription: "Quality Gate status: ${qg.status}"
                             )
                         }
                     } catch (Exception e) {
@@ -129,8 +123,7 @@ pipeline {
                             buildState: 'FAILED',
                             buildKey: 'quality-gate',
                             buildName: 'SonarQube Quality Gate',
-                            buildDescription: "Error: ${e.message}",
-                            basicAuth: true
+                            buildDescription: "Error: ${e.message}"
                         )
                         throw e
                     }
@@ -143,22 +136,19 @@ pipeline {
         success {
             bitbucketStatusNotify(
                 buildState: 'SUCCESSFUL',
-                buildDescription: "Build completed successfully",
-                basicAuth: true
+                buildDescription: "Build completed successfully"
             )
         }
         failure {
             bitbucketStatusNotify(
                 buildState: 'FAILED',
-                buildDescription: "Build failed",
-                basicAuth: true
+                buildDescription: "Build failed"
             )
         }
         aborted {
             bitbucketStatusNotify(
                 buildState: 'FAILED',
-                buildDescription: "Build was aborted",
-                basicAuth: true
+                buildDescription: "Build was aborted"
             )
         }
     }
