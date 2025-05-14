@@ -1,12 +1,6 @@
 pipeline {
-    options {
-        ansiColor('xterm')
-    }
-
-    agent { 
-        label 'DEVBOX' 
-    }
-
+       agent any
+    
     environment {
         SONAR_PROJECT_KEY = "dockerautopilot"
         SCANNER_HOME = tool 'sonar-scanner'
