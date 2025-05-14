@@ -1,19 +1,22 @@
 pipeline {
     agent any
-
     environment {
         SONAR_PROJECT_KEY = "dockerautopilot"
         SCANNER_HOME = tool 'sonar-scanner'
         SONARQUBE_ENV = "sonar-scanner"
     }
-
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
+                // Notify Bitbucket that build is in progress
+                bitbucketStatusNotify(
+                    buildState: 'INPROGRESS',
+                    buildKey: 'sonarqube-analysis',
+                    buildName: 'SonarQube Analysis'
+                )
             }
         }
-
         stage('SonarQube analysis') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_ENV}") {
@@ -27,32 +30,39 @@ pipeline {
                 }
             }
         }
-
         stage('Quality Gate Check') {
             steps {
                 script {
                     def qg = waitForQualityGate()
                     env.QUALITY_GATE_STATUS = qg.status
                     if (qg.status != 'OK') {
+                        currentBuild.result = 'FAILURE'
+                        bitbucketStatusNotify(
+                            buildState: 'FAILED',
+                            buildKey: 'sonarqube-analysis',
+                            buildName: 'SonarQube Analysis'
+                        )
                         error "SonarQube Quality Gate failed: ${qg.status}"
+                    } else {
+                        bitbucketStatusNotify(
+                            buildState: 'SUCCESSFUL',
+                            buildKey: 'sonarqube-analysis',
+                            buildName: 'SonarQube Analysis'
+                        )
                     }
                 }
             }
         }
     }
-
     post {
-        always {
-            script {
-                currentBuild.result = currentBuild.result ?: 'SUCCESS'
-                notifyBitbucket()
-            }
+        success {
+            bitbucketStatusNotify(buildState: 'SUCCESSFUL')
         }
-
         failure {
-            script {
-                notifyBitbucket()
-            }
+            bitbucketStatusNotify(buildState: 'FAILED')
+        }
+        aborted {
+            bitbucketStatusNotify(buildState: 'FAILED')
         }
     }
 }
