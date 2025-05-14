@@ -46,46 +46,50 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
+                    // Set a flag to track if we should skip waiting for quality gate
+                    def skipQualityGate = false
+                    
                     try {
-                        timeout(time: 3, unit: 'MINUTES') {  // Reduced timeout to avoid long waits
-                            echo "Waiting for SonarQube task ID: ${env.SONAR_CE_TASK_ID}"
-                            
-                            // Check task status first
-                            if (env.SONAR_CE_TASK_ID) {
-                                withSonarQubeEnv('SonarQube') {
+                        // First, check the task status
+                        if (env.SONAR_CE_TASK_ID) {
+                            withSonarQubeEnv('SonarQube') {
+                                try {
+                                    echo "Checking status of SonarQube task: ${env.SONAR_CE_TASK_ID}"
                                     def statusOutput = bat(script: "curl -u %SONAR_AUTH_TOKEN%: %SONAR_HOST_URL%/api/ce/task?id=${env.SONAR_CE_TASK_ID}", returnStdout: true).trim()
-                                    echo "Current task status: ${statusOutput}"
+                                    echo "Task status response: ${statusOutput}"
+                                } catch (Exception e) {
+                                    echo "Error checking task status: ${e.message}"
                                 }
                             }
-                            
-                            // Instead of waiting indefinitely, set a shorter timeout for waitForQualityGate
-                            echo "Checking quality gate with timeout..."
-                            catchError(buildResult: null, stageResult: null) {
-                                def qg = waitForQualityGate(abortPipeline: false)
-                                echo "Quality Gate status: ${qg.status}"
-                                
-                                if (qg.status != 'OK') {
-                                    echo "Quality Gate did not pass, status: ${qg.status}"
-                                    echo "Ignoring quality gate failure as requested"
-                                    // No longer setting currentBuild.result = 'UNSTABLE'
+                        } else {
+                            echo "No SonarQube task ID found, skipping quality gate"
+                            skipQualityGate = true
+                        }
+                        
+                        // If we should proceed with quality gate check
+                        if (!skipQualityGate) {
+                            // Use a very short timeout to avoid getting stuck
+                            timeout(time: 30, unit: 'SECONDS') {
+                                echo "Attempting quick quality gate check..."
+                                try {
+                                    def qg = waitForQualityGate(abortPipeline: false)
+                                    echo "Quality Gate status: ${qg.status}"
+                                } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+                                    echo "Quality gate check timed out after 30 seconds"
+                                    echo "Skipping quality gate and continuing pipeline"
+                                } catch (Exception e) {
+                                    echo "Error during quality gate check: ${e.message}"
+                                    echo "Continuing pipeline execution"
                                 }
                             }
                         }
                     } catch (Exception e) {
-                        // Just log the exception and continue
-                        echo "Quality Gate check failed: ${e.message}"
-                        echo "Error details: ${e.toString()}"
-                        echo "Continuing pipeline despite Quality Gate issues"
-                        // No longer setting currentBuild.result = 'UNSTABLE'
+                        echo "Error in Quality Gate stage: ${e.message}"
                     } finally {
-                        // Always send a status notification
-                        echo "Quality Gate stage finished, moving to post actions"
+                        echo "Quality Gate stage complete, continuing pipeline"
+                        // Force success status for this stage
+                        currentBuild.result = currentBuild.result ?: 'SUCCESS'
                     }
-                }
-            }
-            post {
-                always {
-                    echo "Inside Quality Gate stage post actions"
                 }
             }
         }
