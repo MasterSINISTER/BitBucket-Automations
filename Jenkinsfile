@@ -14,7 +14,7 @@ pipeline {
 
         stage('Run Branch Cleanup') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'bitbucket-creds-id', usernameVariable: 'USERNAME', passwordVariable: 'APP_PASSWORD')]) {
+                withCredentials([usernamePassword(credentialsId: 'd68eb646-f561-4194-a5be-a369c2f86120', usernameVariable: 'USERNAME', passwordVariable: 'APP_PASSWORD')]) {
                     script {
                         def dryRunFlag = params.DRY_RUN ? "True" : "False"
                         bat """
