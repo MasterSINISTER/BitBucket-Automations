@@ -1,245 +1,96 @@
-import requests
 import os
-import sys
-from urllib.parse import quote
-from concurrent.futures import ThreadPoolExecutor
+import requests
+from datetime import datetime, timedelta, timezone
 
-# Bitbucket API configura`tion
-BASE_URL = "https://api.bitbucket.org/2.0"
-USERNAME = os.environ.get("BITBUCKET_USERNAME")
-APP_PASSWORD = os.environ.get("BITBUCKET_PASSWORD")
-WORKSPACE = os.environ.get("WORKSPACE")
-SOURCE_BRANCH = os.environ.get("SOURCE_BRANCH")
-DESTINATION_BRANCH = os.environ.get("DESTINATION_BRANCH")
+# Load Bitbucket credentials and repo owner from environment variables
 
-print(f"Using username: {USERNAME}")
-print(f"Password length: {'*' * len(APP_PASSWORD) if APP_PASSWORD else 'No password provided'}")
-print(f"Workspace: {WORKSPACE}")
+USERNAME = os.environ.get('BITBUCKET_USERNAME')
+APP_PASSWORD = os.environ.get('BITBUCKET_APP_PASSWORD')
+REPO_OWNER = 'sinisterlab'
 
-# List of repositories to exclude from checking
-EXCLUDED_REPOS = [
-    "dokerautopilot"
+# Define only the specific repos you want to check
+REPO_SLUGS = [
+    'adv-app',
+
 ]
 
-def get_repositories(auth, workspace):
-    """Get all repositories in the workspace"""
-    repositories = []
-    url = f"{BASE_URL}/repositories/{workspace}"
-    next_url = url
-    print(f"Fetching repositories from workspace '{workspace}'...")
+PROTECTED_BRANCHES = ['main']
+CUTOFF_DAYS = 0
+DRY_RUN = True  # Change to False to actually delete
+cutoff_date = datetime.now(timezone.utc) - timedelta(days=CUTOFF_DAYS)
 
-    while next_url:
-        response = requests.get(next_url, auth=auth)
+# Summary counters
+global_total_checked = 0
+global_stale_found = 0
+global_deleted = 0
 
-        if response.status_code != 200:
-            print(f"Error fetching repositories: {response.status_code}")
-            print(response.text)
-            return []
+def clean_branches(repo_slug):
+    global global_total_checked, global_stale_found, global_deleted
 
-        data = response.json()
-        repositories.extend(data.get('values', []))
+    print(f"\n🧹 Cleaning branches for repo: {repo_slug}")
+    base_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/refs/branches"
+    url = base_url
+    visited_urls = set()
+    branches_to_delete = []
+    total_branches_checked = 0
 
-        next_url = data.get('next')
+    while url:
+        if url in visited_urls:
+            print(f"Repeated URL detected, breaking loop: {url}")
+            break
+        visited_urls.add(url)
 
-    filtered_repos = [repo for repo in repositories if repo['slug'] not in EXCLUDED_REPOS]
+        try:
+            resp = requests.get(url, auth=(USERNAME, APP_PASSWORD), timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            print(f"Error fetching branches for {repo_slug}: {e}")
+            break
 
-    print(f"Found {len(repositories)} repositories.")
-    print(f"Excluded {len(repositories) - len(filtered_repos)} repositories from checking.")
-    print(f"Will check {len(filtered_repos)} repositories.")
+        for branch in data.get('values', []):
+            total_branches_checked += 1
+            name = branch['name']
+            date_str = branch['target']['date']
+            last_commit = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
+            if name not in PROTECTED_BRANCHES and last_commit < cutoff_date:
+                branches_to_delete.append((name, last_commit.isoformat()))
 
-    return filtered_repos
+        url = data.get("next")
 
+    global_total_checked += total_branches_checked
+    global_stale_found += len(branches_to_delete)
 
-def check_branch_exists(auth, workspace, repo_slug, branch_name):
-    """Check if a branch exists in the repository"""
-    url = f"{BASE_URL}/repositories/{workspace}/{repo_slug}/refs/branches/{quote(branch_name)}"
-    response = requests.get(url, auth=auth)
-    return response.status_code == 200
+    print(f"🔍 Checked {total_branches_checked} branches in {repo_slug}. Found {len(branches_to_delete)} stale branches.")
 
-
-def find_default_branch(auth, workspace, repo_slug, preferred_branches=["master", "main"]):
-    """Try to find a default branch from the list of preferred branches"""
-    for branch in preferred_branches:
-        if check_branch_exists(auth, workspace, repo_slug, branch):
-            return branch
-    return None
-
-
-def compare_branches(auth, workspace, repo_slug, source, destination):
-    """Compare two branches and get the commit differences"""
-    if not check_branch_exists(auth, workspace, repo_slug, source):
-        return {"error": f"Source branch '{source}' does not exist"}
-
-    if not check_branch_exists(auth, workspace, repo_slug, destination):
-        default_branch = find_default_branch(auth, workspace, repo_slug)
-        if default_branch:
-            print(f"Note: Using '{default_branch}' instead of '{destination}' for {repo_slug}")
-            destination = default_branch
+    for name, date in branches_to_delete:
+        if DRY_RUN:
+            print(f"[DRY RUN] Would delete: {name} (last commit: {date})")
         else:
-            return {"error": f"Neither '{destination}', 'master', nor 'main' branch exists"}
-
-    source_encoded = quote(source)
-    dest_encoded = quote(destination)
-
-    url = f"{BASE_URL}/repositories/{workspace}/{repo_slug}/commits"
-    params = {
-        'include': source_encoded,
-        'exclude': dest_encoded
-    }
-
-    response = requests.get(url, auth=auth, params=params)
-
-    if response.status_code != 200:
-        return {"error": f"Error comparing branches: {response.status_code} - {response.text}"}
-
-    commits = response.json().get('values', [])
-    return {"commits": commits, "actual_destination": destination}
-
-
-def check_repository(auth, workspace, repo, source, destination):
-    """Check a single repository for changes between branches"""
-    repo_slug = repo['slug']
-    repo_name = repo['name']
-
-    result = compare_branches(auth, workspace, repo_slug, source, destination)
-
-    if "error" in result:
-        return {
-            "repo_slug": repo_slug,
-            "repo_name": repo_name,
-            "status": "error",
-            "message": result["error"],
-            "commits": []
-        }
-
-    commits = result["commits"]
-    actual_destination = result.get("actual_destination", destination)
-
-    return {
-        "repo_slug": repo_slug,
-        "repo_name": repo_name,
-        "status": "success",
-        "has_changes": len(commits) > 0,
-        "commits": commits,
-        "actual_destination": actual_destination
-    }
-
-
-def display_repository_results(results, source, requested_destination):
-    """Display the results of repository checks"""
-    repos_with_changes = []
-    repos_with_errors = []
-    repos_without_changes = []
-    repos_with_alt_branch = []
-
-    for result in results:
-        if result["status"] == "error":
-            repos_with_errors.append(result)
-        else:
-            actual_dest = result.get("actual_destination", requested_destination)
-            if actual_dest != requested_destination:
-                repos_with_alt_branch.append((result, actual_dest))
-
-            if result["has_changes"]:
-                repos_with_changes.append(result)
+            del_url = f"{base_url}/{name}"
+            response = requests.delete(del_url, auth=(USERNAME, APP_PASSWORD))
+            if response.status_code == 204:
+                print(f"Deleted: {name}")
+                global_deleted += 1
             else:
-                repos_without_changes.append(result)
-
-    if repos_with_changes:
-        print("REPOSITORIES WITH CHANGES")
-        for repo in repos_with_changes:
-            print(f"Repository: {repo['repo_name']} ({repo['repo_slug']})")
-            actual_dest = repo.get("actual_destination", requested_destination)
-            if actual_dest != requested_destination:
-                print(f"   Using branch: {actual_dest} (fallback from {requested_destination})")
-            print(f"   Found {len(repo['commits'])} commits to merge from {source} to {actual_dest}")
-
-            for i, commit in enumerate(repo['commits'][:3], 1):
-                print(f"   - Commit {i}: {commit['message'].strip()[:60]}")
-
-            if len(repo['commits']) > 3:
-                print(f"   - ... and {len(repo['commits']) - 3} more commits")
-
-    if repos_with_errors:
-        print("REPOSITORIES WITH ERRORS")
-        for repo in repos_with_errors:
-            print(f"Error: {repo['repo_name']} ({repo['repo_slug']}): {repo['message']}")
-    
-        print("SUMMARY")
-    summary_lines = [
-        f"Total repositories checked: {len(results)}",
-        f"Repositories with changes: {len(repos_with_changes)}"
-    ]
-    if repos_with_changes:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_changes]))
-
-    summary_lines.append(f"Repositories with errors: {len(repos_with_errors)}")
-    if repos_with_errors:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_errors]))
-
-    summary_lines.append(f"Repositories with fallback branch: {len(repos_with_alt_branch)}")
-    if repos_with_alt_branch:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo[0]['repo_name']} used {repo[1]}" for repo in repos_with_alt_branch]))
-
-    summary_lines.append(f"Repositories without changes: {len(repos_without_changes)}")
-    if repos_without_changes:
-        summary_lines.append("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_without_changes]))
-
-    summary = "\n".join(summary_lines)
-    print(summary)
-
-    
-    with open('branch_comparison_summary.txt', 'w') as f:
-     if repos_with_changes:
-        f.write("REPOSITORIES WITH CHANGES\n")
-        for repo in repos_with_changes:
-            f.write(f"Repository: {repo['repo_name']} ({repo['repo_slug']})\n")
-            actual_dest = repo.get("actual_destination", requested_destination)
-            if actual_dest != requested_destination:
-                f.write(f"   Using branch: {actual_dest} (fallback from {requested_destination})\n")
-            f.write(f"   Found {len(repo['commits'])} commits to merge from {source} to {actual_dest}\n")
-
-            for i, commit in enumerate(repo['commits'][:3], 1):
-                f.write(f"   - Commit {i}: {commit['message'].strip()[:60]}\n")
-
-            if len(repo['commits']) > 3:
-                f.write(f"   - ... and {len(repo['commits']) - 3} more commits\n")
-        f.write("\n")
-
-    # Now write the rest of the summary
-        f.write("SUMMARY\n")
-        f.write(f"Total repositories checked: {len(results)}\n")
-        f.write(f"Repositories with changes: {len(repos_with_changes)}\n")
-        if repos_with_changes:
-            f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_changes]) + "\n")
-
-        f.write(f"Repositories with errors: {len(repos_with_errors)}\n")
-        if repos_with_errors:
-            f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_with_errors]) + "\n")
-
-        f.write(f"Repositories with fallback branch: {len(repos_with_alt_branch)}\n")
-        if repos_with_alt_branch:
-            f.write("  - " + "\n  - ".join([f"{repo[0]['repo_name']} used {repo[1]}" for repo in repos_with_alt_branch]) + "\n")
-
-        f.write(f"Repositories without changes: {len(repos_without_changes)}\n")
-        if repos_without_changes:
-            f.write("  - " + "\n  - ".join([f"{repo['repo_name']}" for repo in repos_without_changes]) + "\n")
-
-
+                print(f"Failed to delete {name}: {response.status_code} - {response.text}")
 
 def main():
-    """Main entry point for the script"""
-    auth = (USERNAME, APP_PASSWORD)
-    repos = get_repositories(auth, WORKSPACE)
+    if not USERNAME or not APP_PASSWORD:
+        print("Error: Missing USERNAME or APP_PASSWORD environment variables.")
+        return
 
-    results = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_repo = {executor.submit(check_repository, auth, WORKSPACE, repo, SOURCE_BRANCH, DESTINATION_BRANCH): repo for repo in repos}
-        for future in future_to_repo:
-            result = future.result()
-            results.append(result)
+    print(f"Repositories selected: {len(REPO_SLUGS)}")
+    for repo_slug in REPO_SLUGS:
+        clean_branches(repo_slug)
 
-    display_repository_results(results, SOURCE_BRANCH, DESTINATION_BRANCH)
+    print("\n ====== Final Summary ======")
+    print(f"Total repositories scanned: {len(REPO_SLUGS)}")
+    print(f"Total branches checked:     {global_total_checked}")
+    print(f"Stale branches found:       {global_stale_found}")
+    print(f"Deleted branches:            {global_deleted if not DRY_RUN else 0}")
+    print(f"Dry run mode:               {'ON' if DRY_RUN else 'OFF'}")
+    print("================================\n")
 
 if __name__ == "__main__":
     main()
