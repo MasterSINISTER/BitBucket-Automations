@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        USERNAME = credentials('bitbucket-username')
-        APP_PASSWORD = credentials('bitbucket-app-password')
+        USERNAME = credentials('d68eb646-f561-4194-a5be-a369c2f86120')
+        APP_PASSWORD = credentials('d68eb646-f561-4194-a5be-a369c2f86120')
         PYTHON_PATH = 'C:\\Users\\MasterSINISTER\\AppData\\Local\\Programs\\Python\\Python310\\python.exe'
     }
 
@@ -15,7 +15,7 @@ pipeline {
                 %PYTHON_PATH% --version
 
                 echo Running Branch Cleanup Script...
-                %PYTHON_PATH% branch_cleanup.py
+                %PYTHON_PATH% branch_comparison.py
                 """
             }
         }
