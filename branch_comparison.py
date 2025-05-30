@@ -13,8 +13,8 @@ REPO_SLUGS = [
     'adv-app',
 ]
 
-PROTECTED_BRANCHES = ['main']
-CUTOFF_DAYS = 1
+PROTECTED_BRANCHES = ['main','working']
+CUTOFF_DAYS = 0
 cutoff_date = datetime.now(timezone.utc) - timedelta(days=CUTOFF_DAYS)
 
 # Summary counters
