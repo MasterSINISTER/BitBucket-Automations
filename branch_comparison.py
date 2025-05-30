@@ -1,28 +1,31 @@
 import os
+import sys
 import requests
 from datetime import datetime, timedelta, timezone
 
 # Load Bitbucket credentials and repo owner from environment variables
-
 USERNAME = os.environ.get('BITBUCKET_USERNAME')
 APP_PASSWORD = os.environ.get('BITBUCKET_APP_PASSWORD')
-REPO_OWNER = 'sinisterlab'
+REPO_OWNER = 'sinisterlab'  # Default fallback
 
 # Define only the specific repos you want to check
 REPO_SLUGS = [
     'adv-app',
-
 ]
 
 PROTECTED_BRANCHES = ['main']
-CUTOFF_DAYS = 0
-DRY_RUN = True  # Change to False to actually delete
+CUTOFF_DAYS = 90
 cutoff_date = datetime.now(timezone.utc) - timedelta(days=CUTOFF_DAYS)
 
 # Summary counters
 global_total_checked = 0
 global_stale_found = 0
 global_deleted = 0
+
+# Read dry run flag from command line argument, default True
+DRY_RUN = True
+if len(sys.argv) > 1:
+    DRY_RUN = sys.argv[1].lower() == 'true'
 
 def clean_branches(repo_slug):
     global global_total_checked, global_stale_found, global_deleted
@@ -77,10 +80,12 @@ def clean_branches(repo_slug):
 
 def main():
     if not USERNAME or not APP_PASSWORD:
-        print("Error: Missing USERNAME or APP_PASSWORD environment variables.")
+        print("Error: Missing BITBUCKET_USERNAME or BITBUCKET_APP_PASSWORD environment variables.")
         return
 
     print(f"Repositories selected: {len(REPO_SLUGS)}")
+    print(f"Dry run mode: {'ON' if DRY_RUN else 'OFF'}")
+
     for repo_slug in REPO_SLUGS:
         clean_branches(repo_slug)
 
@@ -88,8 +93,7 @@ def main():
     print(f"Total repositories scanned: {len(REPO_SLUGS)}")
     print(f"Total branches checked:     {global_total_checked}")
     print(f"Stale branches found:       {global_stale_found}")
-    print(f"Deleted branches:            {global_deleted if not DRY_RUN else 0}")
-    print(f"Dry run mode:               {'ON' if DRY_RUN else 'OFF'}")
+    print(f"Deleted branches:           {global_deleted if not DRY_RUN else 0}")
     print("================================\n")
 
 if __name__ == "__main__":
