@@ -14,7 +14,7 @@ REPO_SLUGS = [
 ]
 
 PROTECTED_BRANCHES = ['main']
-CUTOFF_DAYS = 90
+CUTOFF_DAYS = 1
 cutoff_date = datetime.now(timezone.utc) - timedelta(days=CUTOFF_DAYS)
 
 # Summary counters
@@ -30,7 +30,7 @@ if len(sys.argv) > 1:
 def clean_branches(repo_slug):
     global global_total_checked, global_stale_found, global_deleted
 
-    print(f"\n🧹 Cleaning branches for repo: {repo_slug}")
+    print(f"\n Cleaning branches for repo: {repo_slug}")
     base_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/refs/branches"
     url = base_url
     visited_urls = set()
@@ -64,7 +64,7 @@ def clean_branches(repo_slug):
     global_total_checked += total_branches_checked
     global_stale_found += len(branches_to_delete)
 
-    print(f"🔍 Checked {total_branches_checked} branches in {repo_slug}. Found {len(branches_to_delete)} stale branches.")
+    print(f"Checked {total_branches_checked} branches in {repo_slug}. Found {len(branches_to_delete)} stale branches.")
 
     for name, date in branches_to_delete:
         if DRY_RUN:
