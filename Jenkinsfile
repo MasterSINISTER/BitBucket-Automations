@@ -35,7 +35,7 @@ pipeline {
             steps {
                 script {
                     def dryRunFlag = params.DRY_RUN ? "True" : "False"
-                    bat "${env.PYTHON} branch_cleanup.py ${dryRunFlag}"
+                    bat "${env.PYTHON} branch_comparison.py ${dryRunFlag}"
                 }
             }
         }
