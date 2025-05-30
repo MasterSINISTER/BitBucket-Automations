@@ -19,7 +19,7 @@ pipeline {
 
         stage('Setup Environment') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'bitbucket-creds-id', passwordVariable: 'APP_PASSWORD', usernameVariable: 'USERNAME')]) {
+                withCredentials([usernamePassword(credentialsId: 'd68eb646-f561-4194-a5be-a369c2f86120', passwordVariable: 'APP_PASSWORD', usernameVariable: 'USERNAME')]) {
                     bat """
                         echo Username: %USERNAME%
                         echo Setting env vars...
