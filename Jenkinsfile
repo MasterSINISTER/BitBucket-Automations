@@ -1,11 +1,5 @@
 pipeline {
-    agent {
-        label 'windows'  // Changed from 'DEVBOX' to 'windows'
-    }
-
-    options {
-        ansiColor('xterm')
-    }
+    agent any
 
     environment {
         PYTHON_PATH = 'python'  // Windows typically has python in PATH
