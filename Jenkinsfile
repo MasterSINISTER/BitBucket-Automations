@@ -30,7 +30,7 @@ pipeline {
 
     post {
         always {
-            echo '✅ Branch cleanup completed.'
+            echo 'Branch cleanup completed.'
         }
     }
 }
