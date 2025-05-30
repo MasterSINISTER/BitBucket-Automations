@@ -5,26 +5,45 @@ pipeline {
         PYTHON = 'C:\\Users\\MasterSINISTER\\AppData\\Local\\Programs\\Python\\Python310\\python.exe'
     }
 
+    parameters {
+        booleanParam(name: 'DRY_RUN', defaultValue: true, description: 'Dry run without deleting branches')
+    }
+
     stages {
-        stage('Install Dependencies') {
+        stage('Checkout') {
             steps {
-                bat '"%PYTHON%" -m pip install requests'
+                // Checkout source code (make sure branch_cleanup.py is in repo)
+                checkout scm
             }
         }
 
-        stage('Run Branch Cleanup') {
-            environment {
-                BITBUCKET_USERNAME = credentials('d68eb646-f561-4194-a5be-a369c2f86120')       // Secret Text
-                BITBUCKET_APP_PASSWORD = credentials('d68eb646-f561-4194-a5be-a369c2f86120') // Secret Text
-            }
+        stage('Setup Environment') {
             steps {
-                bat """
-                echo Running Bitbucket branch cleanup...
-                echo Username: %BITBUCKET_USERNAME%
-                %PYTHON% branch_cleanup.py
-                """
+                withCredentials([usernamePassword(credentialsId: 'bitbucket-creds-id', passwordVariable: 'APP_PASSWORD', usernameVariable: 'USERNAME')]) {
+                    bat """
+                        echo Username: %USERNAME%
+                        echo Setting env vars...
+
+                        setx BITBUCKET_USERNAME "%USERNAME%" /M
+                        setx BITBUCKET_APP_PASSWORD "%APP_PASSWORD%" /M
+                    """
+                }
+            }
+        }
+
+        stage('Run Branch Cleanup Script') {
+            steps {
+                script {
+                    def dryRunFlag = params.DRY_RUN ? "True" : "False"
+                    bat "${env.PYTHON} branch_cleanup.py ${dryRunFlag}"
+                }
             }
         }
     }
-}
 
+    post {
+        always {
+            echo "✅ Job Completed. Check logs above for summary."
+        }
+    }
+}
