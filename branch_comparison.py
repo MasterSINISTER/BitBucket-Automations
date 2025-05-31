@@ -3,6 +3,7 @@ import sys
 import requests
 from datetime import datetime, timedelta, timezone
 
+today_str = datetime.now().strftime('%Y%m%d')
 USERNAME = os.environ.get('BITBUCKET_USERNAME')
 APP_PASSWORD = os.environ.get('BITBUCKET_APP_PASSWORD')
 REPO_OWNER = 'sinisterlab'
@@ -22,7 +23,7 @@ if len(sys.argv) > 1:
     DRY_RUN = sys.argv[1].lower() == 'true'
 
 def backup_protected_branch(repo_slug, branch_name):
-    backup_branch = f"{branch_name}_backup"
+    backup_name = f"{branch}_backup_{today_str}"
     get_branch_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/refs/branches/{branch_name}"
     create_branch_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/refs/branches"
 
@@ -86,10 +87,11 @@ def clean_branches(repo_slug):
             date_str = branch['target']['date']
             last_commit = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
             if (
-                name not in PROTECTED_BRANCHES
-                and not name.endswith('_backup')
-                and last_commit < cutoff_date
-                ):
+            name not in PROTECTED_BRANCHES
+            and '_backup_' not in name  # ignore timestamped backups
+            and last_commit < cutoff_date
+             ):
+
                     branches_to_delete.append((name, last_commit.isoformat()))
 
         url = data.get("next")
