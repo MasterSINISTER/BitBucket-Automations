@@ -31,7 +31,7 @@ def backup_protected_branch(repo_slug, branch_name):
     backup_url = f"{base_url}/refs/branches/{backup_branch}"
     create_branch_url = f"{base_url}/refs/branches"
 
-    print(f"\nEnsuring latest backup for: {branch_name} ➜ {backup_branch}")
+    print(f"\nEnsuring latest backup for: {branch_name} --> {backup_branch}")
 
     try:
         # Delete existing backup with same name if exists
