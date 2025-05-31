@@ -8,7 +8,7 @@ APP_PASSWORD = os.environ.get('BITBUCKET_APP_PASSWORD')
 REPO_OWNER = 'sinisterlab'
 
 REPO_SLUGS = ['adv-app']
-PROTECTED_BRANCHES = ['main']
+PROTECTED_BRANCHES = ['main','working']
 CUTOFF_DAYS = 0
 cutoff_date = datetime.now(timezone.utc) - timedelta(days=CUTOFF_DAYS)
 
