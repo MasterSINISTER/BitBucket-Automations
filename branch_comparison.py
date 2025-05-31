@@ -3,36 +3,48 @@ import sys
 import requests
 from datetime import datetime, timedelta, timezone
 
-today_str = datetime.now().strftime('%Y%m%d')
+# Configuration
 USERNAME = os.environ.get('BITBUCKET_USERNAME')
 APP_PASSWORD = os.environ.get('BITBUCKET_APP_PASSWORD')
 REPO_OWNER = 'sinisterlab'
-
 REPO_SLUGS = ['adv-app']
-PROTECTED_BRANCHES = ['main','working']
-CUTOFF_DAYS = 0
+PROTECTED_BRANCHES = ['main', 'working']
+CUTOFF_DAYS = 0  # Set to desired number of days
 cutoff_date = datetime.now(timezone.utc) - timedelta(days=CUTOFF_DAYS)
+today_str = datetime.now().strftime('%Y%m%d')
 
+# Summary counters
 global_total_checked = 0
 global_stale_found = 0
 global_deleted = 0
 
-# Read dry run flag from CLI
+# Read dry run flag from CLI args
 DRY_RUN = True
 if len(sys.argv) > 1:
     DRY_RUN = sys.argv[1].lower() == 'true'
 
+
 def backup_protected_branch(repo_slug, branch_name):
-    backup_name = f"{branch}_backup_{today_str}"
-    get_branch_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/refs/branches/{branch_name}"
-    create_branch_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/refs/branches"
+    backup_branch = f"{branch_name}_backup_{today_str}"
+    base_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}"
+    get_branch_url = f"{base_url}/refs/branches/{branch_name}"
+    backup_url = f"{base_url}/refs/branches/{backup_branch}"
+    create_branch_url = f"{base_url}/refs/branches"
+
+    print(f"\nEnsuring latest backup for: {branch_name} ➜ {backup_branch}")
 
     try:
-        # Check if backup already exists
-        check_resp = requests.get(f"{create_branch_url}/{backup_branch}", auth=(USERNAME, APP_PASSWORD))
+        # Delete existing backup with same name if exists
+        check_resp = requests.get(backup_url, auth=(USERNAME, APP_PASSWORD))
         if check_resp.status_code == 200:
-            print(f"Backup branch already exists: {backup_branch}")
-            return
+            if not DRY_RUN:
+                del_resp = requests.delete(backup_url, auth=(USERNAME, APP_PASSWORD))
+                if del_resp.status_code == 204:
+                    print(f"Deleted existing backup branch: {backup_branch}")
+                else:
+                    print(f"Failed to delete old backup: {backup_branch} - {del_resp.status_code}")
+            else:
+                print(f"[DRY RUN] Would delete existing backup: {backup_branch}")
 
         # Get latest commit hash of original branch
         resp = requests.get(get_branch_url, auth=(USERNAME, APP_PASSWORD))
@@ -43,6 +55,7 @@ def backup_protected_branch(repo_slug, branch_name):
             print(f"[DRY RUN] Would create backup: {backup_branch} from {branch_name} @ {commit_hash}")
             return
 
+        # Create new backup branch
         payload = {
             "name": backup_branch,
             "target": {"hash": commit_hash}
@@ -56,6 +69,7 @@ def backup_protected_branch(repo_slug, branch_name):
 
     except Exception as e:
         print(f"Error backing up {branch_name}: {e}")
+
 
 def clean_branches(repo_slug):
     global global_total_checked, global_stale_found, global_deleted
@@ -87,12 +101,11 @@ def clean_branches(repo_slug):
             date_str = branch['target']['date']
             last_commit = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
             if (
-            name not in PROTECTED_BRANCHES
-            and '_backup_' not in name  # ignore timestamped backups
-            and last_commit < cutoff_date
-             ):
-
-                    branches_to_delete.append((name, last_commit.isoformat()))
+                name not in PROTECTED_BRANCHES
+                and '_backup_' not in name
+                and last_commit < cutoff_date
+            ):
+                branches_to_delete.append((name, last_commit.isoformat()))
 
         url = data.get("next")
 
@@ -112,6 +125,7 @@ def clean_branches(repo_slug):
                 global_deleted += 1
             else:
                 print(f"Failed to delete {name}: {response.status_code} - {response.text}")
+
 
 def main():
     if not USERNAME or not APP_PASSWORD:
@@ -134,6 +148,7 @@ def main():
     print(f"Stale branches found:       {global_stale_found}")
     print(f"Deleted branches:           {global_deleted if not DRY_RUN else 0}")
     print("================================\n")
+
 
 if __name__ == "__main__":
     main()
