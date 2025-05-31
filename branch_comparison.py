@@ -85,8 +85,12 @@ def clean_branches(repo_slug):
             name = branch['name']
             date_str = branch['target']['date']
             last_commit = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
-            if name not in PROTECTED_BRANCHES and last_commit < cutoff_date:
-                branches_to_delete.append((name, last_commit.isoformat()))
+            if (
+                name not in PROTECTED_BRANCHES
+                and not name.endswith('_backup')
+                and last_commit < cutoff_date
+                ):
+                    branches_to_delete.append((name, last_commit.isoformat()))
 
         url = data.get("next")
 
