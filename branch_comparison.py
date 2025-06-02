@@ -24,6 +24,27 @@ if len(sys.argv) > 1:
     DRY_RUN = sys.argv[1].lower() == 'true'
 
 
+def add_dummy_file_commit(repo_slug, branch_name):
+    print(f"Adding dummy commit to branch {branch_name}")
+    url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}/src"
+    try:
+        response = requests.post(
+            url,
+            auth=(USERNAME, APP_PASSWORD),
+            files={
+                'branch': (None, branch_name),
+                'message': (None, f'Add dummy .backup_marker on {datetime.now().isoformat()}'),
+                'files': ('.backup_marker', f'Backup created on {datetime.now().isoformat()}'),
+            }
+        )
+        if response.status_code in [200, 201]:
+            print(f"Dummy commit added to {branch_name}")
+        else:
+            print(f"Failed to add dummy commit: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Error adding dummy commit to {branch_name}: {e}")
+
+
 def backup_protected_branch(repo_slug, branch_name):
     backup_branch = f"{branch_name}_backup_{today_str}"
     base_url = f"https://api.bitbucket.org/2.0/repositories/{REPO_OWNER}/{repo_slug}"
@@ -38,8 +59,7 @@ def backup_protected_branch(repo_slug, branch_name):
         check_resp = requests.get(backup_url, auth=(USERNAME, APP_PASSWORD))
         if check_resp.status_code == 200:
             if not DRY_RUN:
-                del_url = f"{base_url}/refs/branches/{backup_branch}"  # <-- Use correct delete URL
-                del_resp = requests.delete(del_url, auth=(USERNAME, APP_PASSWORD))
+                del_resp = requests.delete(backup_url, auth=(USERNAME, APP_PASSWORD))
                 if del_resp.status_code == 204:
                     print(f"Deleted existing backup branch: {backup_branch}")
                 else:
@@ -65,6 +85,7 @@ def backup_protected_branch(repo_slug, branch_name):
 
         if create_resp.status_code == 201:
             print(f"Backup created: {backup_branch}")
+            add_dummy_file_commit(repo_slug, backup_branch)
         else:
             print(f"Failed to create backup for {branch_name}: {create_resp.status_code} - {create_resp.text}")
 
