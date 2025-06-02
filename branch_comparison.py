@@ -38,11 +38,12 @@ def backup_protected_branch(repo_slug, branch_name):
         check_resp = requests.get(backup_url, auth=(USERNAME, APP_PASSWORD))
         if check_resp.status_code == 200:
             if not DRY_RUN:
-                del_resp = requests.delete(backup_url, auth=(USERNAME, APP_PASSWORD))
+                del_url = f"{base_url}/refs/branches/{backup_branch}"  # <-- Use correct delete URL
+                del_resp = requests.delete(del_url, auth=(USERNAME, APP_PASSWORD))
                 if del_resp.status_code == 204:
                     print(f"Deleted existing backup branch: {backup_branch}")
                 else:
-                    print(f"Failed to delete old backup: {backup_branch} - {del_resp.status_code}")
+                    print(f"Failed to delete old backup: {backup_branch} - {del_resp.status_code} - {del_resp.text}")
             else:
                 print(f"[DRY RUN] Would delete existing backup: {backup_branch}")
 
